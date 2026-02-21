@@ -16,7 +16,7 @@
 
 ## 🚀 Demo en Vivo
 
-👉 **[Ver Demo en GitHub Pages](https://erick-ante.github.io/SubSync)**
+👉 **[Ver Demo en GitHub Pages](https://erick-ante.github.io/subsync/)**
 
 ## ✨ Características Principales
 
