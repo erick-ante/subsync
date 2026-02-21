@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubSync V13 - Gestiona tus suscripciones</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            dark: {
+              bg: "#0a0a0a",
+              card: "#141414",
+              surface: "#1a1a1a",
+              border: "#2a2a2a",
+            },
+            primary: {
+              DEFAULT: "#3b82f6",
+              hover: "#2563eb",
+            },
+            accent: {
+              purple: "#8b5cf6",
+              green: "#10b981",
+              yellow: "#f59e0b",
+              red: "#ef4444",
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+
+<body class="min-h-screen">
+  <!-- Pantalla de carga mientras se inicializa la app -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Pantalla para que el usuario ingrese su nombre y empiece a usar la app -->
+  <div id="view-login" class="view active gradient-bg">
+    <div class="w-full max-w-md px-4">
+      <div class="text-center mb-8">
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <span class="text-xl font-bold text-primary">SUBSYNC</span>
+        </div>
+        <h1 class="text-3xl font-bold mb-2">Bienvenido</h1>
+        <p class="text-gray-400">
+          Estamos listos para ayudarte a organizar tus gastos. Cuentanos, como
+          te llamas?
+        </p>
+      </div>
+
+      <div class="glass-card rounded-3xl p-8 mb-6">
+        <div class="flex flex-col items-center mb-6">
+          <div class="relative">
+            <div id="profile-preview"
+              class="w-24 h-24 rounded-full bg-dark-surface border-2 border-dashed border-gray-600 flex items-center justify-center cursor-pointer hover:border-primary transition-colors overflow-hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <input type="file" id="profile-photo" accept="image/*" class="hidden" />
+          </div>
+          <button onclick="document.getElementById('profile-photo').click()"
+            class="text-primary text-sm mt-2 hover:underline">
+            Anadir foto
+          </button>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-primary text-sm mb-2">Tu nombre</label>
+          <div class="relative">
+            <input type="text" id="user-name" placeholder="Escribe aqui..."
+              class="w-full bg-dark-surface border border-gray-700 rounded-2xl px-4 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-primary transition-colors" />
+            <svg xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 text-gray-500 absolute right-4 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+        </div>
+
+        <button onclick="login()"
+          class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-4 rounded-2xl transition-colors flex items-center justify-center gap-2">
+          Continuar
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="text-center">
+        <p class="text-gray-500 text-sm mb-3">Ya usabas SubSync antes?</p>
+        <button onclick="importData()"
+          class="w-full max-w-md bg-dark-surface border border-gray-700 hover:border-gray-600 text-gray-300 py-3 rounded-2xl transition-colors flex items-center justify-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          Importar datos anteriores
+        </button>
+        <input type="file" id="import-file" accept=".json" class="hidden" onchange="handleImport(this)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla principal donde se ven todas las estadisticas y opciones -->
+  <div id="view-dashboard" class="view min-h-screen">
+    <header class="px-4 py-4 sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <span class="text-lg font-semibold">SubSync</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="showView('profile')"
+            class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent-purple overflow-hidden">
+            <img id="header-avatar" src="" alt="" class="w-full h-full object-cover hidden" />
+            <span id="header-initial"
+              class="w-full h-full flex items-center justify-center text-sm font-semibold"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto p-4 pb-24">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-card rounded-2xl p-5">
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">
+                Total Mensual
+              </p>
+              <p id="total-expenses" class="text-3xl font-bold">$0.00</p>
+            </div>
+            <div class="glass-card rounded-2xl p-5">
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">
+                Subs Activas
+              </p>
+              <p id="active-subs" class="text-3xl font-bold">0</p>
+            </div>
+            <div class="glass-card rounded-2xl p-5">
+              <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">
+                Proximos (7d)
+              </p>
+              <p id="upcoming-subs" class="text-3xl font-bold">0</p>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-gray-500 text-xs uppercase tracking-wider mb-3">
+              Gastos por categoria
+            </p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="categories-grid"></div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold">Tu Calendario</h3>
+              <div class="flex items-center gap-2">
+                <button onclick="changeMonth(-1)" class="p-1 hover:bg-dark-surface rounded">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span id="calendar-month" class="text-sm font-medium min-w-[100px] text-center"></span>
+                <button onclick="changeMonth(1)" class="p-1 hover:bg-dark-surface rounded">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-7 gap-1 mb-2">
+              <div class="text-center text-xs text-gray-500 py-2">DOM</div>
+              <div class="text-center text-xs text-gray-500 py-2">LUN</div>
+              <div class="text-center text-xs text-gray-500 py-2">MAR</div>
+              <div class="text-center text-xs text-gray-500 py-2">MIE</div>
+              <div class="text-center text-xs text-gray-500 py-2">JUE</div>
+              <div class="text-center text-xs text-gray-500 py-2">VIE</div>
+              <div class="text-center text-xs text-gray-500 py-2">SAB</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold">Proximas</h3>
+            </div>
+            <div id="upcoming-list" class="space-y-3"></div>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5">
+            <h3 class="font-semibold mb-4">Mis suscripciones</h3>
+            <div id="subscriptions-list" class="space-y-3 max-h-80 overflow-y-auto scroll-hide"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="openAddModal()" class="fab">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Pantalla para que el usuario configure su perfil y app -->
+  <div id="view-profile" class="view min-h-screen">
+    <header class="px-4 py-4 sticky top-0 z-30">
+      <div class="max-w-3xl mx-auto flex items-center justify-between">
+        <button onclick="showView('dashboard')"
+          class="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Volver</span>
+        </button>
+        <span class="font-semibold">Mi Perfil</span>
+        <div class="w-10"></div>
+      </div>
+    </header>
+
+    <div class="max-w-3xl mx-auto p-4 pb-24">
+      <div class="text-center py-8">
+        <div class="relative inline-block">
+          <div id="profile-avatar-large"
+            class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent-purple flex items-center justify-center text-3xl font-bold overflow-hidden">
+            <img id="profile-img-large" src="" alt="" class="w-full h-full object-cover hidden" />
+            <span id="profile-initial-large"></span>
+          </div>
+          <button onclick="document.getElementById('profile-photo-update').click()"
+            class="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center border-2 border-dark-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          <input type="file" id="profile-photo-update" accept="image/*" class="hidden" />
+        </div>
+        <h2 id="profile-name-display" class="text-2xl font-bold mt-4"></h2>
+      </div>
+
+      <div class="glass-card rounded-2xl overflow-hidden mb-4">
+        <div class="px-5 py-4 border-b border-dark-border flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span class="font-medium">Configuracion de cuenta</span>
+        </div>
+        <div class="divide-y divide-dark-border">
+          <div class="px-5 py-4">
+            <label class="block text-sm text-gray-400 mb-2">Tu nombre</label>
+            <div class="flex gap-2">
+              <input type="text" id="edit-profile-name"
+                class="flex-1 bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+              <button onclick="saveProfileName()"
+                class="px-4 py-2 bg-primary hover:bg-primary-hover rounded-xl transition-colors">
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl overflow-hidden mb-4">
+        <div class="px-5 py-4 border-b border-dark-border flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          <span class="font-medium">Preferencias</span>
+        </div>
+        <div class="divide-y divide-dark-border">
+          <div class="px-5 py-4 flex items-center justify-between">
+            <div>
+              <p class="text-gray-300">Moneda preferida</p>
+              <p class="text-xs text-gray-500">
+                Moneda de visualizacion por defecto
+              </p>
+            </div>
+            <select id="currency-select"
+              class="bg-dark-surface border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="MXN">MXN ($)</option>
+              <option value="COP">COP ($)</option>
+            </select>
+          </div>
+          <div class="px-5 py-4 flex items-center justify-between">
+            <div>
+              <p class="text-gray-300">Apariencia</p>
+              <p class="text-xs text-gray-500">Claro, Oscuro o Sistema</p>
+            </div>
+            <div class="flex bg-dark-surface rounded-lg p-1" id="theme-selector">
+              <button onclick="setTheme('light')" id="theme-light"
+                class="theme-btn px-3 py-1 text-xs rounded-md text-gray-500">
+                Claro
+              </button>
+              <button onclick="setTheme('dark')" id="theme-dark"
+                class="theme-btn px-3 py-1 text-xs rounded-md bg-gray-700 text-white">
+                Oscuro
+              </button>
+              <button onclick="setTheme('system')" id="theme-system"
+                class="theme-btn px-3 py-1 text-xs rounded-md text-gray-500">
+                Sistema
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl overflow-hidden mb-4">
+        <div class="px-5 py-4 border-b border-dark-border flex items-center gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+          <span class="font-medium">Gestion de datos</span>
+        </div>
+        <div class="p-5">
+          <div class="warning-box bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-4">
+            <div class="flex items-start gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p class="text-sm text-yellow-200">
+                Tus datos se guardan localmente usando SQLite. No borres la
+                cache sin antes exportar tu informacion.
+              </p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="exportData()"
+              class="flex items-center justify-center gap-2 bg-dark-surface border border-gray-700 hover:border-gray-600 py-3 rounded-xl transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exportar JSON
+            </button>
+            <button onclick="document.getElementById('import-file-profile').click()"
+              class="flex items-center justify-center gap-2 bg-dark-surface border border-gray-700 hover:border-gray-600 py-3 rounded-xl transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Importar JSON
+            </button>
+            <input type="file" id="import-file-profile" accept=".json" class="hidden" onchange="handleImport(this)" />
+          </div>
+        </div>
+      </div>
+
+      <button onclick="logout()"
+        class="w-full text-accent-red py-3 hover:bg-accent-red/10 rounded-xl transition-colors">
+        Cerrar sesion
+      </button>
+    </div>
+  </div>
+
+  <!-- Ventana flotante para agregar una suscripcion nueva -->
+  <div id="modal-add" class="modal">
+    <div class="rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 z-10"
+        style="background: inherit">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <h3 class="font-semibold text-lg">Anadir Suscripcion</h3>
+        </div>
+        <button onclick="closeModal('modal-add')" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-5">
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Nombre del servicio</label>
+          <div class="flex gap-2">
+            <button onclick="openIconSelector('add')" class="icon-selector-btn flex-shrink-0" title="Seleccionar icono">
+              <span id="add-selected-icon">📱</span>
+            </button>
+            <input type="text" id="add-name" placeholder="ej. Netflix, Spotify..."
+              class="flex-1 bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Categoria</label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="selectCategory('entertainment')" data-category="entertainment"
+              class="category-btn flex items-center gap-2 px-4 py-2 rounded-full border border-gray-700 hover:border-accent-purple transition-colors">
+              <span>🎬</span> Entretenimiento
+            </button>
+            <button onclick="selectCategory('productivity')" data-category="productivity"
+              class="category-btn flex items-center gap-2 px-4 py-2 rounded-full border border-gray-700 hover:border-primary transition-colors">
+              <span>✓</span> Productividad
+            </button>
+            <button onclick="selectCategory('utility')" data-category="utility"
+              class="category-btn flex items-center gap-2 px-4 py-2 rounded-full border border-gray-700 hover:border-accent-yellow transition-colors">
+              <span>⚡</span> Utilidades
+            </button>
+            <button onclick="selectCategory('health')" data-category="health"
+              class="category-btn flex items-center gap-2 px-4 py-2 rounded-full border border-gray-700 hover:border-accent-green transition-colors">
+              <span>❤</span> Salud
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Precio mensual</label>
+            <div class="relative">
+              <input type="number" id="add-price" placeholder="0.00" step="0.01" min="0"
+                class="w-full bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">USD</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Fecha de cobro</label>
+            <input type="date" id="add-date"
+              class="w-full bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="font-medium">Suscripcion compartida</p>
+              <p class="text-xs text-gray-500">Divide el costo con otros</p>
+            </div>
+            <div class="toggle-switch" id="shared-toggle" onclick="toggleShared()"></div>
+          </div>
+          <div id="shared-section" class="hidden bg-dark-surface rounded-xl p-4 space-y-3">
+            <p class="text-xs text-gray-500 uppercase tracking-wider">
+              Compartiendo con
+            </p>
+            <div id="shared-people" class="flex flex-wrap gap-2"></div>
+            <div class="flex gap-2">
+              <input type="text" id="new-person" placeholder="Nombre"
+                class="flex-1 bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+              <button onclick="addPerson()"
+                class="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors">
+                + Anadir
+              </button>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-gray-700">
+              <span class="text-sm text-gray-400">Tu parte</span>
+              <span id="your-share" class="font-semibold">$0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-6 border-t border-dark-border flex gap-3 sticky bottom-0" style="background: inherit">
+        <button onclick="closeModal('modal-add')"
+          class="flex-1 py-3 border border-gray-700 rounded-xl hover:bg-white/5 transition-colors">
+          Cancelar
+        </button>
+        <button onclick="saveSubscription()"
+          class="flex-1 py-3 bg-primary hover:bg-primary-hover rounded-xl flex items-center justify-center gap-2 transition-colors">
+          Anadir Suscripcion
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana flotante para editar los datos de una suscripcion que ya existe -->
+  <div id="modal-edit" class="modal">
+    <div class="rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 z-10"
+        style="background: inherit">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+          <h3 class="font-semibold text-lg">Editar Suscripcion</h3>
+        </div>
+        <button onclick="closeModal('modal-edit')" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-5">
+        <input type="hidden" id="edit-id" />
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Nombre del servicio</label>
+          <div class="flex gap-2">
+            <button onclick="openIconSelector('edit')" class="icon-selector-btn flex-shrink-0" title="Cambiar icono">
+              <span id="edit-selected-icon">📱</span>
+            </button>
+            <input type="text" id="edit-name"
+              class="flex-1 bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Precio</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input type="number" id="edit-price" step="0.01" min="0"
+                class="w-full bg-dark-surface border border-gray-700 rounded-xl pl-8 pr-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-2">Ciclo</label>
+            <select id="edit-cycle"
+              class="w-full bg-dark-surface border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors">
+              <option value="monthly">Mensual</option>
+              <option value="yearly">Anual</option>
+              <option value="weekly">Semanal</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-400 mb-2">Categoria</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="selectEditCategory('entertainment')" data-edit-category="entertainment"
+              class="edit-category-btn flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-700 hover:border-accent-purple transition-colors">
+              <span class="text-2xl">🎬</span>
+              <span class="text-xs">Entretenimiento</span>
+            </button>
+            <button onclick="selectEditCategory('productivity')" data-edit-category="productivity"
+              class="edit-category-btn flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-700 hover:border-primary transition-colors">
+              <span class="text-2xl">✓</span>
+              <span class="text-xs">Productividad</span>
+            </button>
+            <button onclick="selectEditCategory('utility')" data-edit-category="utility"
+              class="edit-category-btn flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-700 hover:border-accent-yellow transition-colors">
+              <span class="text-2xl">⚡</span>
+              <span class="text-xs">Utilidad</span>
+            </button>
+            <button onclick="selectEditCategory('health')" data-edit-category="health"
+              class="edit-category-btn flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-700 hover:border-accent-green transition-colors">
+              <span class="text-2xl">❤</span>
+              <span class="text-xs">Salud</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-dark-surface rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-medium">Suscripcion Compartida</p>
+                <p class="text-xs text-gray-500">
+                  Administrar acceso compartido
+                </p>
+              </div>
+            </div>
+            <div class="toggle-switch active" id="edit-shared-toggle" onclick="toggleEditShared()"></div>
+          </div>
+          <div id="edit-shared-section">
+            <div id="edit-shared-people" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex gap-2 mb-3">
+              <input type="text" id="edit-new-person" placeholder="Nombre"
+                class="flex-1 bg-dark-bg border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+              <button onclick="addEditPerson()"
+                class="px-4 py-2 bg-primary/20 text-primary rounded-lg text-sm hover:bg-primary/30 transition-colors">
+                + Anadir
+              </button>
+            </div>
+            <div class="flex items-center justify-between pt-3 border-t border-gray-700">
+              <div>
+                <p class="text-xs text-gray-500">
+                  Dividido entre
+                  <span id="edit-people-count">4</span> personas
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-gray-500 uppercase">Tu parte</p>
+                <p id="edit-your-share" class="font-semibold text-lg">
+                  $0.00
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="p-6 border-t border-dark-border space-y-3 sticky bottom-0" style="background: inherit">
+        <button onclick="confirmDelete()"
+          class="w-full py-3 text-accent-red flex items-center justify-center gap-2 hover:bg-accent-red/10 rounded-xl transition-colors">
+          Eliminar Suscripcion
+        </button>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-edit')"
+            class="flex-1 py-3 border border-gray-700 rounded-xl hover:bg-white/5 transition-colors">
+            Cancelar
+          </button>
+          <button onclick="updateSubscription()"
+            class="flex-1 py-3 bg-primary hover:bg-primary-hover rounded-xl transition-colors">
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana flotante con un grid de iconos para elegir -->
+  <div id="modal-icons" class="modal">
+    <div class="rounded-3xl w-full max-w-sm max-h-[70vh] overflow-y-auto">
+      <div class="p-5 border-b border-dark-border flex items-center justify-between sticky top-0 z-10"
+        style="background: inherit">
+        <h3 class="font-semibold text-lg">Seleccionar Icono</h3>
+        <button onclick="closeModal('modal-icons')" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-5">
+        <div class="grid grid-cols-6 gap-2" id="icon-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana flotante que muestra la lista de pagos de un dia en especifico -->
+  <div id="modal-day-subs" class="modal">
+    <div class="rounded-3xl w-full max-w-sm max-h-[80vh] overflow-y-auto">
+      <div class="p-6 border-b border-dark-border flex items-center justify-between sticky top-0 z-10"
+        style="background: inherit">
+        <h3 class="font-semibold text-lg" id="day-subs-title">
+          Suscripciones
+        </h3>
+        <button onclick="closeModal('modal-day-subs')" class="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="p-6">
+        <div id="day-subs-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ventana flotante para preguntar si esta seguro de borrar algo -->
+  <div id="modal-delete" class="modal">
+    <div class="rounded-3xl w-full max-w-sm p-6 text-center">
+      <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold mb-2">Eliminar suscripcion?</h3>
+      <p class="text-gray-400 mb-6">
+        Estas seguro de que quieres eliminar
+        <span id="delete-name" class="text-white font-medium delete-sub-name"></span>? Esta accion no se puede deshacer.
+      </p>
+      <div class="space-y-3">
+        <button onclick="deleteSubscription()"
+          class="w-full py-3 bg-accent-red hover:bg-red-600 rounded-xl transition-colors">
+          Si, eliminar suscripcion
+        </button>
+        <button onclick="
+              closeModal('modal-delete');
+              closeModal('modal-edit');
+            " class="w-full py-3 border border-gray-700 hover:bg-white/5 rounded-xl transition-colors">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
